@@ -6,6 +6,7 @@ on:
   pull_request:
 
 jobs:
+  # The job name "checks (<os>)" is required by the ruleset that protects main; keep it.
   check:
     name: checks (${{ matrix.os }})
     strategy:
@@ -19,3 +20,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: bash scripts/ci-check.sh
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --quiet -e ".[test]"
+      - uses: actions/cache@v4
+        with:
+          path: third_party/models
+          key: models-${{ hashFiles('gauss/models.lock.json') }}
+      - run: python -m gauss.models fetch
+      - run: python -m pytest -q

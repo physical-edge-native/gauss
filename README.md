@@ -4,7 +4,7 @@ Split control versus central control of robots, compared as a pure question of m
 architecture, at the size of industrial robots. Part of the
 [Physical-Edge Native Architecture](https://physical-edge-native.github.io/) project.
 
-**Status: just started. Scope decided; nothing runs yet.**
+**Status: just started. The robot models load and stand in simulation; no training yet.**
 
 ## What this repository is for
 
@@ -35,6 +35,19 @@ Plan (see [the scope record](docs/design/2026-11-25-scope.md)):
 - simulation only, in MuJoCo, trained on CPUs.
 
 Work is tracked in GitHub Issues.
+
+## Running
+
+Python 3.10 or later and git are needed. The robot models are not stored in this repository;
+they are fetched from their upstream repositories at pinned commits, with their BSD-3-Clause
+licenses, and checked against the hashes in `gauss/models.lock.json`.
+
+```bash
+python -m pip install -e ".[test]"
+python -m gauss.models fetch      # A2 from unitreerobotics/unitree_mujoco, Go2 from MuJoCo Menagerie
+python -m pytest                  # loading, standing for 10 s, determinism
+python -m gauss.throughput --out throughput.json   # control steps per second on this machine
+```
 
 ## License
 

@@ -1,0 +1,5 @@
+# Robot models fetched by `python -m gauss.models fetch` (not committed; see gauss/models.lock.json)
+/third_party/models/
+__pycache__/
+*.egg-info/
+.venv/

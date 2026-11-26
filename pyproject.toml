@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gauss"
+version = "0.0.0"
+description = "Split versus central control of industrial-size quadrupeds, compared in simulation"
+readme = "README.md"
+license = "MIT OR Apache-2.0"
+requires-python = ">=3.10"
+# MuJoCo is pinned exactly: simulation results are compared bit for bit between runs.
+dependencies = ["mujoco==4.0.1", "numpy>=2", "psutil>=5.9"]
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
+
+[tool.setuptools]
+packages = ["gauss"]
+
+[tool.setuptools.package-data]
+gauss = ["models.lock.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
