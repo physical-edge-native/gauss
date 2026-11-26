@@ -4,7 +4,7 @@ Split control versus central control of robots, compared as a pure question of m
 architecture, at the size of industrial robots. Part of the
 [Physical-Edge Native Architecture](https://physical-edge-native.github.io/) project.
 
-**Status: just started. The robot models load and stand in simulation; no training yet.**
+**Status: just started. A central policy learns to walk on A2 in a short run on CPUs; no split control yet.**
 
 ## What this repository is for
 
@@ -48,6 +48,19 @@ python -m gauss.models fetch      # A2 from unitreerobotics/unitree_mujoco, Go2 
 python -m pytest                  # loading, standing for 10 s, determinism
 python -m gauss.throughput --out throughput.json   # control steps per second on this machine
 ```
+
+Training the central policy (PPO in PyTorch, CPU build) and evaluating it:
+
+```bash
+python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+python -m pip install -e ".[test,train]"
+python -m gauss.train --out runs/a2-s0 --seed 0 --workers 4 --minutes 75   # --resume continues a run
+python -m gauss.evaluate runs/a2-s0/last.pt --out eval.json                 # tracking error, falls per minute
+```
+
+`runs/<name>/config.json` records the settings, versions, commit and machine of a run, and
+`log.jsonl` one line per update (env steps, wall time, CPU time, losses, reward terms).
+The same seed gives identical results with the same `--threads`, torch version and kind of CPU.
 
 ## License
 
