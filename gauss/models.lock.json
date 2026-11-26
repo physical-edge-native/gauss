@@ -1,0 +1,52 @@
+{
+  "a2": {
+    "repository": "https://github.com/unitreerobotics/unitree_mujoco",
+    "commit": "1eb6642e3f3fdfb7fb13a9794fd6a2dd93ea0e7d",
+    "sha256": {
+      "LICENSE": "a5d73fc4aca9074e3e6fe0b1a0ba763cf9514b2249b7390ed20fe8d53630bf25",
+      "unitree_robots/a2/a2.xml": "ece5cf9ab9bc8424ab2d1e4a7e54c5113aedabe9d0ecbfafae8588ae8daad6c5",
+      "unitree_robots/a2/meshes/base_link.STL": "8d63bf204cc935a7df7415d31bfb953f3ded653899b6b27bbf0268fc363e5904",
+      "unitree_robots/a2/meshes/left_front_Link1.STL": "386cc25336de29f5d397424dc807abdc3551935dfe006ee66f5c2d44cee95155",
+      "unitree_robots/a2/meshes/left_front_Link2.STL": "2106e36d6cb839b944707793d7be01c4a37181333797aa60fc00a4e45dc3a148",
+      "unitree_robots/a2/meshes/left_front_Link3.STL": "26a39dfaf784d9fe16019690e0d4e766232a2117453b7884cab3f3d81ec3ff5b",
+      "unitree_robots/a2/meshes/left_front_Link4.STL": "033aae39b32d50eaf1c034a887dbd61b90b9aade3d9e76d817d8832152737570",
+      "unitree_robots/a2/meshes/left_hind_Link1.STL": "d4b121e9382c7735ab60d32dda444ca48f278cea74b21ec94ac54a8032c75ce0",
+      "unitree_robots/a2/meshes/left_hind_Link2.STL": "d62c468ae60f5f17daa39d8ed104bdd7b6b0cec460dfe5712db2a041f14e1a3f",
+      "unitree_robots/a2/meshes/left_hind_Link3.STL": "bf0ce4ee36d62f2301796ed390252b65d0b637502e79dae2446132201ef62e23",
+      "unitree_robots/a2/meshes/left_hind_Link4.STL": "bb913b7637a5e3d252efa7e71e4af3be63658f699a2401b29f2a059bc0ae6326",
+      "unitree_robots/a2/meshes/right_front_Link1.STL": "722ad81adc6501a41469fd1c4d9a99d935b15662b631a206fe5b748a0d6eee52",
+      "unitree_robots/a2/meshes/right_front_Link2.STL": "ea81193979699f476db044cc3e51921100b423de60fde28f74e99c0b94408616",
+      "unitree_robots/a2/meshes/right_front_Link3.STL": "5fc735e0a33aed6e3d68d73323d58450eb4179a17be460afcf28969ecfb70fbe",
+      "unitree_robots/a2/meshes/right_front_Link4.STL": "27871fb73330654fdafa682b5c7d0722f59462e4696ed05b870c072a31eba75d",
+      "unitree_robots/a2/meshes/right_hind_Link1.STL": "cc9c733858fcd8dc0347329e3187c060b20ab5f7b34ddc61cf16c5d1b1d842a1",
+      "unitree_robots/a2/meshes/right_hind_Link2.STL": "21a3bbfa7edb7116d34be42fed84d0bfbf4ef95f000c5a8c243398046d891889",
+      "unitree_robots/a2/meshes/right_hind_Link3.STL": "618152ab154f41c1b6ac9a056c800fa52e6861d7f74c180cf3e4bc3b65415ebf",
+      "unitree_robots/a2/meshes/right_hind_Link4.STL": "dee1269d94e2ae521058b842ba33f48eaec435317515c7b169076386ca5756d9"
+    }
+  },
+  "go2": {
+    "repository": "https://github.com/google-deepmind/mujoco_menagerie",
+    "commit": "eea4c7431b63da8278b0ff31638e0b0e941cec0e",
+    "sha256": {
+      "unitree_go2/LICENSE": "7e2dfda59b98e38d123f539b59ecb637ffd8908d19e09f7765884a309f010d40",
+      "unitree_go2/README.md": "b1384664f8bd60ef4333e340aa06c6f2b1175a5329e3ea9345da3dde20362069",
+      "unitree_go2/go2.xml": "50adb09a4365293e2acdaf2010ae35a82b0f09fea18ae51806fef91e310ed04a",
+      "unitree_go2/assets/base_0.obj": "8cdc53719002a5ee737d867904e534a6d6fa930b616bdcc1b3131e577d4e46c0",
+      "unitree_go2/assets/base_1.obj": "39d2f4724ff64dd5a0640c308fd98902a2946660a8d033ec8dbf368fd5af0dd6",
+      "unitree_go2/assets/base_2.obj": "29cae463f95d678e4ede863c36c9b19b0d356b8340412add10670d70bdcc3095",
+      "unitree_go2/assets/base_3.obj": "f51ba43bf300e68957a0c1aa83eaf3e4926f4ac7e64a0d6c33ae5d21fcbcf5f6",
+      "unitree_go2/assets/base_4.obj": "49ddec0129546e5dd2075d5beacf7f207baa2860aeff7626818e64d2efbf3821",
+      "unitree_go2/assets/calf_0.obj": "4a818cd563c5b7e2a271504442d05fd777d38cbaa028d4a10ad29c9f87bb355e",
+      "unitree_go2/assets/calf_1.obj": "51950c3a153ae3208592df86ea11c9d6756f8f645ebca5caf6910c61aeb03817",
+      "unitree_go2/assets/calf_mirror_0.obj": "6dc0406207a1c08a5953fd5962aca1a270fd06593d30d100205e05c1b32d4af2",
+      "unitree_go2/assets/calf_mirror_1.obj": "f84f5af90b914633165beb3a5493ee499169144c5797dcf04c6eb5842f74b31a",
+      "unitree_go2/assets/foot.obj": "df9e78a7c0110d02557439010f2a5f11f0ec4fd907b32704145dbd6aa7affc0b",
+      "unitree_go2/assets/hip_0.obj": "cc29932ab4d251ce3f72389ec4c1f757e44eee138b87e772b648c2bc76b506cd",
+      "unitree_go2/assets/hip_1.obj": "3fd5bd9b2ef6abe622c0739d3c67eaa1679b19b47132951972c4892a779ea7cf",
+      "unitree_go2/assets/thigh_0.obj": "bb3edfe6a7b04f4f4dff1ce7b05d426ddce941e276cc6372fb542055893c71ec",
+      "unitree_go2/assets/thigh_1.obj": "3a631822f9f7d2114b1b79dcdff5abf95103630abb7d91d1f3b8b18117132ed2",
+      "unitree_go2/assets/thigh_mirror_0.obj": "07abaedce761f1dd48647384ac14ba1959276bc78d5a2a62051e8f1c6093933b",
+      "unitree_go2/assets/thigh_mirror_1.obj": "db984a3e983eabbc9b38183427cca9ab0bb3bdb049f9eab030e06edda36579d6"
+    }
+  }
+}
