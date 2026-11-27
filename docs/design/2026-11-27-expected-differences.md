@@ -80,7 +80,7 @@ carry. GPU boards are not measured.
 
 | # | Expectation | What is measured | Refuted if | Reported alongside |
 |---|---|---|---|---|
-| T1 | Split reaches Q with fewer environment steps (2026-11-26) | environment steps until Q is first reached, at the width used for both forms | central needs as few or fewer | the final quality of both forms at the end of the budget |
+| T1 | Split reaches Q with fewer environment steps (2026-11-26) | environment steps until Q is first reached, at the width used for both forms | central needs as few or fewer | the final quality of both forms at the end of the budget; the share of seeds that reach Q and the spread of the final quality over seeds (where Schilling et al. 2021 found their difference; added 2026-11-27, #39) |
 | T2 | Split needs fewer CPU hours to reach Q (2026-11-26) | CPU hours to the same point, on the same machine | not fewer | wall-clock time and the machine; computation per step of each form |
 | T3 | The advantage in T1 grows with size (2026-11-26, widened) | the ratio of T1 (split / central) at erg's size, Go2 size and A2 size | the ratio does not fall from erg's size to A2 size | each ratio with its spread |
 
