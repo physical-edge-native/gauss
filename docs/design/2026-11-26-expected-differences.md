@@ -2,6 +2,9 @@
 
 Date: 2026-11-26. Issue: #12. Decided by the maintainer; this record was written with an AI assistant.
 
+> Written for the quadrupeds of Go2 and A2 size. It is to be revised for [the revised scope](2026-11-27-scope-and-comparison.md)
+> (#19) before any split form is trained.
+
 gauss does not claim that split control (one controller per leg) is better than one central policy overall
 ([scope record](2026-11-25-scope.md)). It may claim a specific difference when that difference was written down here
 **before** the experiment, was measured under the stated conditions, and is reported together with what split control
