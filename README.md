@@ -1,37 +1,38 @@
 # gauss
 
-Split control versus central control of robots, compared as a pure question of model
-architecture, at the size of industrial robots. Part of the
+Split control versus central control of robots, compared as a question of model
+architecture, in simulation, on robots of different sizes and kinds. Part of the
 [Physical-Edge Native Architecture](https://physical-edge-native.github.io/) project.
 
-**Status: just started. A central policy learns to walk on A2 in a short run on CPUs; no split control yet.**
+**Status: just started. Scope revised to five robots (2026-11-27); a central policy learns to walk on A2 in a short run on CPUs; no split control yet.**
 
 ## What this repository is for
 
-A legged robot is usually controlled by one policy that sees the whole body. In split
-control, each leg has its own controller that sees only its own leg's sensors and the
-values exchanged with other legs, in the same way that the Physical-Edge Native
-Architecture splits a computation into regions that exchange only the values on their
-borders.
+A robot is usually controlled by one policy that sees the whole body. In split control,
+each part of the body (a leg, a joint or a limb) has its own small controller that sees
+only its own part's sensors and the values exchanged with its neighbours, in the same way
+that the Physical-Edge Native Architecture splits a computation into regions that exchange
+only the values on their borders.
 
-gauss measures how the two differ on four-legged robots of industrial size, in
-simulation: walking performance, the computation needed for training, computation and
-communication per controller, and behaviour under message loss, delay and faults.
-We make no claim that split control is better than central control; the comparison is
-the result.
+gauss measures how the two differ, in simulation only and without cameras, on public
+MuJoCo models of a small quadruped of erg's size, quadrupeds of Unitree Go2 and A2 size,
+a robot arm and a humanoid. The main question is up to which size and kind of robot, and
+under which conditions, the policy's computation can be carried by a group of cheap
+microcontrollers instead of one computer with a GPU. gauss also measures the computation
+needed for training, command tracking and stability, behaviour under message delay, loss
+and stopped controllers, and how easily each form learns. We make no claim that split
+control is better than central control; the measured differences, including where split
+control is worse, are the result.
 
 The sister repository [erg](https://github.com/physical-edge-native/erg) makes the same
-comparison on a cheap four-legged robot built from hobby parts. Differences that matter at
-industrial size may not show on a small, cheap robot, so the architecture comparison is
-kept here, separately.
+comparison on a cheap four-legged robot that is built and run. gauss starts at erg's size,
+checks its results against erg's simulator, and then widens the size and the kind of robot.
 
-Plan (see [the scope record](docs/design/2026-11-25-scope.md)):
+Plan (see [the scope record](docs/design/2026-11-27-scope-and-comparison.md)):
 
-- robots of the size of the Unitree A2 (about 40 kg, the main robot) and Unitree Go2
-  (about 15 kg), both with four legs of three joints, like erg's robot;
-- a ladder of architectures, from one controller per leg without messages, through
-  neighbours-only and all-to-all messages and a body-structured central model, to one
-  central policy;
+- robots: erg's size, Go2 size (about 15 kg), A2 size (about 40 kg), a robot arm, a humanoid;
+- neighbours-only split control against one central policy on every robot, with the rest
+  of a ladder of architectures where the budget allows;
 - simulation only, in MuJoCo, trained on CPUs.
 
 Work is tracked in GitHub Issues.
