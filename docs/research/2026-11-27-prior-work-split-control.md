@@ -22,7 +22,8 @@ doi:10.1016/j.neunet.2021.09.017. Earlier hexapod version: arXiv:2005.11164.
 - Compared one central controller with decentralized ones (one controller per leg, with different amounts of
   information from neighbouring legs) on a four-legged MuJoCo agent, trained with deep RL.
 - Reported: learning was more robust in the decentralized cases (less sensitive to hyperparameters, less often
-  stuck in poor local minima), and the decentralized controllers generalised better to new terrain.
+  stuck in poor local minima), and the authors see it as a route to better generalisation towards adaptive
+  behaviour.
 - For gauss: the closest published comparison to gauss's quadruped stages. It is evidence that the split form
   need not learn worse (M5), against the expectation in the scope record that split may need more steps. gauss's
   measurement should report the spread over seeds and the share of seeds reaching Q, which is where that
@@ -48,10 +49,11 @@ used).
 - Introduced Multi-Agent MuJoCo: a MuJoCo robot split into agents (for example one per leg), each seeing only
   nearby joints.
 - Found that how the value function is factorised over agents mattered most for performance.
-- For gauss: gauss trains its split controllers with one shared critic over the whole body during training,
-  while the actors stay local, so only the actors have to fit on microcontrollers. This is the "centralized
-  training, decentralized execution" pattern of this literature. The record should say so explicitly, since it
-  explains why training cost (M2) and execution cost (M1) are measured separately.
+- For gauss: `gauss/train.py` already follows the "centralized training, decentralized execution" pattern of
+  this literature. Both forms use the same critic on the whole-body observation, and it is used in training only.
+  The split form's actors see only their own leg. So only the actors have to fit on microcontrollers (M1), and
+  `computation()` reports the critic separately as training-only. The design record could name this pattern
+  explicitly.
 
 ## 3. Modular policies that pass messages along the body
 
@@ -67,8 +69,8 @@ Control." ICML 2020.
 - One small module, shared by every joint, with messages passed up and down the body tree. One policy controlled
   many different bodies.
 - For gauss: closest in form to gauss's split controllers with learned messages. Shared weights over identical
-  parts (gauss's 4 legs) cut the parameter count, which bears on M1 (one network stored per controller either
-  way, but one set of weights to train). Whether gauss's legs share weights should be stated in the record.
+  parts cut the number of weights to train. `gauss/train.py` already shares one actor among the four legs,
+  each leg's observation holding its leg identifier, and every controller holds its own copy of the weights for M1.
 
 **Kurin, Igl, Rocktäschel, Böhmer, Whiteson (2021).** "My Body is a Cage: the Role of Morphology in Graph-Based
 Incompatible Control." ICLR 2021. arXiv:2010.01856.
@@ -104,8 +106,8 @@ trotting to galloping." *Scientific Reports* 7: 277.
 |---|---|---|
 | Split may need more training steps (expected disadvantage, M2/M5) | Schilling et al. found decentralized learning more robust over seeds | Keep the expectation, but also report the share of seeds that reach Q and the spread of final quality, where the reported difference was |
 | Neighbours-only messages vs global information | Kurin et al.: morphology-shaped message passing did not help, global attention did | Keep the "all parts" rung for at least one robot, so the cost of neighbours-only is measured |
-| Shared critic during training | Multi-agent MuJoCo work: factorisation of the value function matters | State in the record whether gauss's critic is central (training only) and that only the actors are counted in M1 |
-| Shared weights between identical legs | Huang et al.: one module shared by all parts | State in the record whether gauss's 4 leg controllers share weights; report parameters per controller and stored weights in total |
+| Shared critic during training | Multi-agent MuJoCo work: factorisation of the value function matters | Already so in the code (one whole-body critic, training only); name it in the design record. A per-leg or factorised critic is a possible later variation |
+| Shared weights between identical legs | Huang et al.: one module shared by all parts | Already so in the code (one actor shared by the four legs, with a leg identifier); name it in the design record. On the arm and the humanoid, parts differ, so sharing needs a decision there |
 | No messages at all | Owaki and Ishiguro: coordination through load feedback alone | The "no messages" rung is a meaningful baseline, not only a lower bound |
 
 None of these works measured whether the policies fit on microcontrollers (gauss's M1), and none compared sizes
