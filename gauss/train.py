@@ -167,7 +167,8 @@ def main(argv=None):
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--minutes", type=float, default=None, help="stop after this much wall time")
     ap.add_argument("--updates", type=int, default=None, help="stop after this many updates (total)")
-    ap.add_argument("--resume", action="store_true")
+    ap.add_argument("--resume", action="store_true",
+                    help="continue from <out>/last.pt if it exists (otherwise start a new run)")
     ap.add_argument("--num-envs", type=int, default=PPO["num_envs"])
     ap.add_argument("--workers", type=int, default=PPO["num_workers"])
     ap.add_argument("--steps-per-env", type=int, default=PPO["steps_per_env"])
@@ -205,7 +206,9 @@ def main(argv=None):
     lr = hp["lr"]
     update, env_steps, wall_prev, cpu_prev = 0, 0, 0.0, 0.0
     ckpt = os.path.join(args.out, "last.pt")
-    if args.resume and os.path.exists(ckpt):
+    log_path = os.path.join(args.out, "log.jsonl")
+    resumed = args.resume and os.path.exists(ckpt)
+    if resumed:
         s = torch.load(ckpt, weights_only=False)
         if s["robot"] != args.robot or s["seed"] != args.seed:
             raise SystemExit(f"{ckpt} is for robot {s['robot']}, seed {s['seed']}")
@@ -218,6 +221,20 @@ def main(argv=None):
         lr, update, env_steps = s["lr"], s["update"], s["env_steps"]
         wall_prev, cpu_prev = s["wall_s"], s["cpu_s"]
         venv.set_state(s["envs"])
+        # A run stopped between checkpoints has log lines past the checkpoint; drop them, as they are done again.
+        if os.path.exists(log_path):
+            kept = []
+            with open(log_path) as f:
+                for x in f:
+                    try:
+                        if json.loads(x)["update"] > update:
+                            break
+                    except ValueError:  # a line cut short when the run was stopped
+                        break
+                    kept.append(x)
+            with open(log_path + ".tmp", "w") as f:
+                f.writelines(kept)
+            os.replace(log_path + ".tmp", log_path)
         if not args.quiet:
             print(f"resumed at update {update}, {env_steps} env steps", flush=True)
     else:
@@ -233,7 +250,7 @@ def main(argv=None):
 
     t0, c0 = time.perf_counter(), time.process_time()
     _, cpu_workers0 = venv.stats()
-    log = open(os.path.join(args.out, "log.jsonl"), "a")
+    log = open(log_path, "a" if resumed else "w")  # a new run starts a new log
     buf_obs = torch.zeros(T, N, obs_dim)
     buf_act = torch.zeros(T, N, act_dim)
     buf_logp = torch.zeros(T, N)

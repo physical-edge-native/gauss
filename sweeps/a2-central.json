@@ -1,0 +1,8 @@
+{
+ "note": "First full sweep: the central policy on A2 with foot contact, 5 seeds (#29). budget_env_steps is a placeholder until the throughput on the training PC (#11) sets the budget; set workers_per_run and threads_per_run from the same measurement.",
+ "budget_env_steps": 50000000,
+ "workers_per_run": 4,
+ "threads_per_run": 4,
+ "args": ["--foot-contact"],
+ "grid": {"robot": ["a2"], "form": ["central"], "hidden": [null], "seed": [0, 1, 2, 3, 4]}
+}
