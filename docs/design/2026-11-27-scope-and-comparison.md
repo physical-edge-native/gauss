@@ -158,7 +158,7 @@ it is reported as "no difference shown". (Same rule as erg and the 2026-11-26 re
 | Fast whole-body motion | split worse: parts see each other at least one control step late |
 | Message delay and loss | split degrades; the central form has no messages |
 | Total computation and communication of the whole robot | split may be larger than central |
-| Training | split may need more steps (more agents sharing one reward) |
+| Training (environment steps to Q) | split may need as many steps as central or more (more agents sharing one reward). This is the outcome that would refute T1 in the expected differences, which expects fewer; it is reported with the same weight. Reworded 2026-11-27 (#39, coordinator's answer) |
 | Arm accuracy | per-joint control may be less accurate at the end of a long chain |
 
 ## Order of work and the report of 2027-02-21
