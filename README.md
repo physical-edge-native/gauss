@@ -76,6 +76,52 @@ parameters and multiply-adds per controller and for the whole robot, and
 `log.jsonl` one line per update (env steps, wall time, CPU time, losses, reward terms).
 The same seed gives identical results with the same `--threads`, torch version and kind of CPU.
 
+### Training many runs on the training PC
+
+`gauss.sweep` runs a list of training runs (robot, form, hidden widths, seed) to the same budget in
+environment steps, several at once, each as its own `gauss.train` process (a crash stops only that
+run). Write a spec, for example `a2-central.json` for the central policy on A2 with 5 seeds:
+
+```json
+{
+  "budget_env_steps": 50000000,
+  "workers_per_run": 4,
+  "threads_per_run": 4,
+  "args": ["--foot-contact"],
+  "grid": {"robot": ["a2"], "form": ["central"], "hidden": [null], "seed": [0, 1, 2, 3, 4]}
+}
+```
+
+```bash
+python -m gauss.sweep a2-central.json --out runs/a2-central --dry-run   # the runs and their options
+python -m gauss.sweep a2-central.json --out runs/a2-central             # start, or continue after a stop
+```
+
+Each run goes to `runs/a2-central/<robot>-<form>-<hidden>-s<seed>/` (for example
+`a2-central-256x128x64-s0`, or `a2-split-64x64-s0`), with its output in `train.out`. Running the same
+command again skips finished runs and continues interrupted ones from their `last.pt` (saved every
+50 updates), so the PC can be stopped at any time; raising the budget continues finished runs.
+`max_parallel_runs` (or `--max-parallel`) sets how many runs go at once; by default it is the
+number of physical cores divided by the larger of `workers_per_run` and `threads_per_run`. Keep
+`threads_per_run` fixed within a sweep: results are identical only with the same thread count.
+`runs/a2-central/sweep.json` records every run's status, env steps, wall and CPU time, final
+training metrics, the commit and the machine. The budget is set from the throughput measured on
+the PC (#11).
+
+`gauss.quality` finds when each run first reaches a given quality and holds it, with the env steps,
+CPU hours and wall time to that point, and how many seeds of each setting reach it (used to set the
+quality Q and to measure T1 and T2 in [the expected differences](docs/design/2026-11-27-expected-differences.md)):
+
+```bash
+python -m gauss.quality runs/a2-central --max lin_vel_err=0.15 --max fall_rate=0.02 --hold 20   # training log
+python -m gauss.quality runs/a2-central --eval --max lin_vel_err=0.10 --hold 2 --jobs 4         # checkpoints
+```
+
+The first reads the training rollouts' metrics in `log.jsonl` (which include the exploration
+noise); `--eval` evaluates the saved checkpoints `model_NNNNN.pt` with `gauss.evaluate` (the mean
+action, fixed commands), in order until the quality is held, and caches each evaluation next to its
+checkpoint as `model_NNNNN.eval.json`.
+
 ## License
 
 Licensed under either of
