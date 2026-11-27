@@ -57,7 +57,8 @@ def test_sweep_skip_resume_and_same_as_train(tmp_path):
 
     # Running it again starts nothing.
     sweep.run_sweep(spec, str(out), quiet=True, poll_s=0.1)
-    assert (s0 / "train.out").read_text().count("# ") == 1
+    starts = [line for line in (s0 / "train.out").read_text().splitlines() if line.startswith("# ")]
+    assert len(starts) == 1, starts  # one header line per start of the run
 
     # Stop seed 0 between checkpoints: its last.pt is at update 1 while its log already has update 2. Raising the
     # budget to 3 updates continues it from update 1, and it equals a straight run of 3 updates.
