@@ -54,15 +54,25 @@ def build_model(robot: str) -> mujoco.MjModel:
     return spec.compile()
 
 
-def make(robot: str) -> Robot:
-    m = build_model(robot)
-    d = mujoco.MjData(m)
+def stand_targets(m: mujoco.MjModel, robot: str) -> np.ndarray:
+    """The standing pose as joint targets, in actuator order."""
     targets = np.empty(m.nu)
     for i in range(m.nu):
         joint = mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_JOINT, m.actuator_trnid[i, 0])
         part = next(p for p in JOINT_PARTS if f"_{p}_" in f"_{joint}_")
         targets[i] = STAND_POSE[robot][JOINT_PARTS.index(part)]
-        d.qpos[m.jnt_qposadr[m.actuator_trnid[i, 0]]] = targets[i]
+    return targets
+
+
+def actuated_qpos_addresses(m: mujoco.MjModel) -> np.ndarray:
+    return m.jnt_qposadr[m.actuator_trnid[:, 0]].copy()
+
+
+def make(robot: str) -> Robot:
+    m = build_model(robot)
+    d = mujoco.MjData(m)
+    targets = stand_targets(m, robot)
+    d.qpos[actuated_qpos_addresses(m)] = targets
     d.qpos[2] = START_HEIGHT[robot]
     d.ctrl[:] = targets
     mujoco.mj_forward(m, d)
