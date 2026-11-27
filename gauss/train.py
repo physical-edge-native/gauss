@@ -43,6 +43,11 @@ PPO = {
     "critic_hidden": [256, 128, 64],  # the same critic for both forms
     "activation": "elu",
     "init_noise_std": 1.0,
+    # Split form, message values (#28): they are clipped to [-1, 1] before being sent, so larger noise costs the
+    # policy nothing and an entropy bonus on them pushes their std up without limit (it reached about 31 in the
+    # first run). Their std starts small (as erg's stds do) and they are left out of the entropy bonus.
+    "msg_init_noise_std": 0.1,
+    "msg_in_entropy": False,
     "gamma": 0.99,
     "lam": 0.95,
     "epochs": 5,
@@ -92,12 +97,15 @@ class SplitActorCritic(nn.Module):
     robot's action is the four legs' actions in a row (N_LEGS * LEG_ACT), with one learned standard deviation per
     leg action value shared by the legs, so the robot's log probability is the sum over legs."""
 
-    def __init__(self, critic_dim, hidden, init_std, critic_hidden):
+    def __init__(self, critic_dim, hidden, init_std, critic_hidden, msg_init_std=None):
         super().__init__()
         self.critic_dim = critic_dim
         self.actor = mlp([LEG_OBS] + hidden, LEG_ACT)
         self.critic = mlp([critic_dim] + critic_hidden, 1)
-        self.log_std = nn.Parameter(torch.full((LEG_ACT,), float(np.log(init_std))))
+        log_std = torch.full((LEG_ACT,), float(np.log(init_std)))
+        if msg_init_std is not None:
+            log_std[LEG_JOINTS:] = float(np.log(msg_init_std))
+        self.log_std = nn.Parameter(log_std)
 
     def mean(self, obs):
         legs = obs[:, self.critic_dim:].reshape(obs.shape[0] * N_LEGS, LEG_OBS)
@@ -110,9 +118,9 @@ class SplitActorCritic(nn.Module):
         return self.critic(obs[:, :self.critic_dim]).squeeze(-1)
 
 
-def make_model(form, obs_dim, act_dim, critic_dim, hidden, critic_hidden, init_std):
+def make_model(form, obs_dim, act_dim, critic_dim, hidden, critic_hidden, init_std, msg_init_std=None):
     if form == "split":
-        return SplitActorCritic(critic_dim, hidden, init_std, critic_hidden)
+        return SplitActorCritic(critic_dim, hidden, init_std, critic_hidden, msg_init_std)
     return ActorCritic(obs_dim, act_dim, hidden, init_std, critic_hidden)
 
 
@@ -200,7 +208,8 @@ def main(argv=None):
     venv = VecEnv(args.robot, hp["num_envs"], hp["num_workers"], args.seed, env_cfg)
     N, T = hp["num_envs"], hp["steps_per_env"]
     obs_dim, act_dim, critic_dim = venv.dims()
-    ac = make_model(args.form, obs_dim, act_dim, critic_dim, hidden, hp["critic_hidden"], hp["init_noise_std"])
+    ac = make_model(args.form, obs_dim, act_dim, critic_dim, hidden, hp["critic_hidden"], hp["init_noise_std"],
+                    hp["msg_init_noise_std"])
     opt = torch.optim.Adam(ac.parameters(), lr=hp["lr"])
     lr = hp["lr"]
     update, env_steps, wall_prev, cpu_prev = 0, 0, 0.0, 0.0
@@ -210,6 +219,8 @@ def main(argv=None):
         if s["robot"] != args.robot or s["seed"] != args.seed:
             raise SystemExit(f"{ckpt} is for robot {s['robot']}, seed {s['seed']}")
         same = ("form", "hidden", "critic_hidden", "num_envs", "steps_per_env")  # the number of workers may change
+        if args.form == "split":
+            same += ("msg_init_noise_std", "msg_in_entropy")
         if any(s["hp"].get(k) != hp[k] for k in same) or s["env_config"] != env_cfg:
             raise SystemExit(f"{ckpt} was made with other settings; give the same options as the first run")
         ac.load_state_dict(s["model"])
@@ -313,7 +324,10 @@ def main(argv=None):
                 idx = perm[i * mb:(i + 1) * mb]
                 d = ac.dist(f_obs[idx])
                 logp = d.log_prob(f_act[idx]).sum(-1)
-                ent = d.entropy().sum(-1).mean()
+                ent_all = d.entropy()
+                if args.form == "split" and not hp["msg_in_entropy"]:  # joint targets only (#28)
+                    ent_all = ent_all.reshape(-1, N_LEGS, LEG_ACT)[..., :LEG_JOINTS]
+                ent = ent_all.reshape(ent_all.shape[0], -1).sum(-1).mean()
                 v = ac.value(f_obs[idx])
                 with torch.no_grad():  # KL(old || new) for diagonal Gaussians, as rsl_rl
                     s_old, s_new = f_sigma[idx], d.stddev
