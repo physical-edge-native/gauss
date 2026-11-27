@@ -104,3 +104,12 @@ def test_split_training_same_seed_and_resume(tmp_path):
     res = evaluate.evaluate(str(tmp_path / "a" / "last.pt"), seconds=1.5)
     assert res["form"] == "split" and len(res["commands"]) == len(evaluate.COMMANDS)
     assert res["lin_vel_err"] is not None
+
+
+def test_message_noise_starts_small_and_has_no_entropy_bonus():
+    """#28: the message values' std starts at msg_init_noise_std and they are left out of the entropy bonus."""
+    ac = train.make_model("split", 0, 0, 10, [8, 8], [8], 1.0, train.PPO["msg_init_noise_std"])
+    std = ac.log_std.detach().exp()
+    assert torch.allclose(std[:LEG_JOINTS], torch.ones(LEG_JOINTS))
+    assert torch.allclose(std[LEG_JOINTS:], torch.full((LEG_ACT - LEG_JOINTS,), train.PPO["msg_init_noise_std"]))
+    assert train.PPO["msg_in_entropy"] is False
