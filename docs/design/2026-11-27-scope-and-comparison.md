@@ -166,7 +166,7 @@ it is reported as "no difference shown". (Same rule as erg and the 2026-11-26 re
 | Stage | Content | Target |
 |---|---|---|
 | 0 | This record and the revised expected differences; pena-meta proposals | December 2026 |
-| 1 | erg's size: central and neighbours-only, 5 seeds each; checked against erg's simulator; M1, M2, M5 | by early February 2027 |
+| 1 | erg's size: central and neighbours-only, 5 seeds each, and the "all parts" rung, 5 seeds (#39, #42); checked against erg's simulator; M1, M2, M5 | by early February 2027 |
 | 2 | Go2 and A2: the same | after stage 1 |
 | 3 | Robot arm | after stage 2 |
 | 4 | Humanoid | if the budget allows |
