@@ -17,7 +17,10 @@ the wording follows erg.
 - **Split (neighbours only)**: one controller per leg (quadrupeds), per joint (arm) or per limb (humanoid), seeing its
   own part's sensors, the command and the values from its neighbours in the body.
 - **Central**: one multilayer perceptron that sees every sensor.
-- The rest of the ladder (no messages, all parts, body-structured central model) where the budget allows.
+- **All parts** (erg's size only, decided in #39): as neighbours only, but each leg receives messages from all three
+  other legs. Run at the width at which neighbours only reaches Q, with 5 seeds.
+- The rest of the ladder (no messages, body-structured central model, and all parts on the other robots) where the
+  budget allows.
 
 Robots: erg's size, Go2 size, A2 size (quadrupeds, 12 joints each), a robot arm (6–7 joints), a humanoid (19–29
 joints). Same model, sensors, command, reward, evaluation and training budget for both forms, at least 5 seeds each.
@@ -107,6 +110,31 @@ carry. GPU boards are not measured.
 |---|---|---|---|---|
 | L1 | On the robots with the most joints (the humanoid), more split seeds reach Q than central seeds (per-leg policies learned where a central one did not converge: Sartoretti et al. 2019) | share of seeds that reach Q within the budget | the share is not higher | the share on every robot |
 | L2 | No expectation: sensitivity to the reward weights and the learning rate | Q reached or not, and steps to Q, under a small stated set of variations | — | — |
+
+## The "all parts" rung at erg's size
+
+Added 2026-11-27 (#42) before any stage 1 training, following the coordinator's answer in #39. It separates two
+reasons why split control could fall short of central control: **splitting the computation** (each controller sees
+only its own leg's sensors) and **limiting messages to neighbours** (information from the diagonal leg arrives a step
+later and only through another leg). Kurin et al. (ICLR 2021) found that, in their tasks, letting every part reach every
+other did better than message passing along the body's structure
+([prior work](../research/2026-11-27-prior-work-split-control.md)).
+
+| # | Expectation | What is measured | Refuted if | Reported alongside |
+|---|---|---|---|---|
+| A1 | On the erg-size quadruped, all parts and neighbours only differ little: the only leg added is the diagonal one, which neighbours only reaches in two control steps instead of one | final velocity-tracking error and falls per minute; environment steps to Q; share of seeds that reach Q | a difference between the two is shown in either direction on any of these | the gap between neighbours only and central on the same measures; bytes per control step per controller (3 messages instead of 2) and whether each controller still fits (M1) |
+
+How the result is read:
+
+- If neighbours only is shown worse than central, and all parts closes at least half of that gap, the gap is put down
+  to limiting messages to neighbours.
+- If all parts does not close half the gap, the gap is put down to splitting the computation.
+- If no gap between neighbours only and central is shown, A1 is reported, and the comparison says nothing about the
+  cause.
+
+A1 holds only at erg's size. On robots with longer chains (the arm, the humanoid), far parts are more than two steps
+apart, and the expectation may differ. It is written in the issue of each stage before that stage is trained, if
+the rung is run there.
 
 ## Other disadvantages recorded with the same weight
 
