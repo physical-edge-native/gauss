@@ -1,7 +1,14 @@
-"""PPO on CPUs for the central walking baseline (one MLP policy for all 12 joints).
+"""PPO on CPUs for walking, in the central form (one MLP policy for all 12 joints) or the neighbours-only split form
+(one controller per leg, the same weights for the four legs, with messages between neighbouring legs; gauss.env).
 
     python -m gauss.train --out runs/a2-s0 --seed 0 --minutes 75
-    python -m gauss.train --out runs/a2-s0 --resume          # continue from runs/a2-s0/last.pt
+    python -m gauss.train --out runs/a2-split-s0 --form split --hidden 64,64 --seed 0 --minutes 75
+    python -m gauss.train --out runs/a2-s0 --resume          # continue from runs/a2-s0/last.pt (same options)
+
+Both forms use the same algorithm and the same critic: a value network on the whole-body observation, used only in
+training. In the split form the four legs' Gaussian log probabilities are summed into the robot's, so PPO's ratio,
+entropy and KL are the robot's, as in the central form (as in erg). --hidden sets the actor's hidden layers (the
+whole policy in the central form, one leg's controller in the split form); the critic keeps PPO["critic_hidden"].
 
 Follows rsl_rl's PPO (clipped objective, clipped value loss, GAE, adaptive learning rate from the KL,
 bootstrapping on time-outs). Writes <out>/config.json (settings, versions, the machine, the commit) and
@@ -24,14 +31,16 @@ import torch
 import torch.nn as nn
 
 from . import machine
-from .env import CONFIG, REWARD_WEIGHTS
+from .env import CONFIG, LEG_ACT, LEG_JOINTS, LEG_OBS, MSG_SIZE, N_LEGS, REWARD_WEIGHTS
 from .vecenv import VecEnv
 
 PPO = {
     "num_envs": 512,
     "num_workers": 4,
     "steps_per_env": 24,
-    "hidden": [256, 128, 64],
+    "hidden": [256, 128, 64],  # the central actor's hidden layers (default of --hidden for --form central)
+    "split_hidden": [64, 64],  # one leg's controller (default of --hidden for --form split)
+    "critic_hidden": [256, 128, 64],  # the same critic for both forms
     "activation": "elu",
     "init_noise_std": 1.0,
     "gamma": 0.99,
@@ -59,17 +68,78 @@ def mlp(sizes, out):
 
 
 class ActorCritic(nn.Module):
-    def __init__(self, obs_dim, act_dim, hidden, init_std):
+    """Central form: the actor and the critic both see the whole-body observation."""
+
+    def __init__(self, obs_dim, act_dim, hidden, init_std, critic_hidden=None):
         super().__init__()
         self.actor = mlp([obs_dim] + hidden, act_dim)
-        self.critic = mlp([obs_dim] + hidden, 1)
+        self.critic = mlp([obs_dim] + (hidden if critic_hidden is None else critic_hidden), 1)
         self.log_std = nn.Parameter(torch.full((act_dim,), float(np.log(init_std))))
 
+    def mean(self, obs):
+        return self.actor(obs)
+
     def dist(self, obs):
-        return torch.distributions.Normal(self.actor(obs), self.log_std.exp().expand(obs.shape[0], -1))
+        return torch.distributions.Normal(self.mean(obs), self.log_std.exp().expand(obs.shape[0], -1))
 
     def value(self, obs):
         return self.critic(obs).squeeze(-1)
+
+
+class SplitActorCritic(nn.Module):
+    """Split form: one actor network shared by the four legs, applied to each leg's own observation (which holds
+    its leg identifier); the critic sees the whole-body observation at the start of the env's observation. The
+    robot's action is the four legs' actions in a row (N_LEGS * LEG_ACT), with one learned standard deviation per
+    leg action value shared by the legs, so the robot's log probability is the sum over legs."""
+
+    def __init__(self, critic_dim, hidden, init_std, critic_hidden):
+        super().__init__()
+        self.critic_dim = critic_dim
+        self.actor = mlp([LEG_OBS] + hidden, LEG_ACT)
+        self.critic = mlp([critic_dim] + critic_hidden, 1)
+        self.log_std = nn.Parameter(torch.full((LEG_ACT,), float(np.log(init_std))))
+
+    def mean(self, obs):
+        legs = obs[:, self.critic_dim:].reshape(obs.shape[0] * N_LEGS, LEG_OBS)
+        return self.actor(legs).reshape(obs.shape[0], N_LEGS * LEG_ACT)
+
+    def dist(self, obs):
+        return torch.distributions.Normal(self.mean(obs), self.log_std.exp().repeat(N_LEGS).expand(obs.shape[0], -1))
+
+    def value(self, obs):
+        return self.critic(obs[:, :self.critic_dim]).squeeze(-1)
+
+
+def make_model(form, obs_dim, act_dim, critic_dim, hidden, critic_hidden, init_std):
+    if form == "split":
+        return SplitActorCritic(critic_dim, hidden, init_std, critic_hidden)
+    return ActorCritic(obs_dim, act_dim, hidden, init_std, critic_hidden)
+
+
+def mlp_size(sizes, out) -> dict:
+    """Parameters and multiply-adds per evaluation of an MLP (the activations are not counted)."""
+    dims = list(sizes) + [out]
+    macs = sum(a * b for a, b in zip(dims[:-1], dims[1:]))
+    return {"layers": dims, "params": macs + sum(dims[1:]), "macs": macs}
+
+
+def computation(form, obs_dim, act_dim, critic_dim, hidden, critic_hidden) -> dict:
+    """Size of the policy per controller and for the whole robot, as run on the robot (the mean action; the
+    critic and the standard deviations are used only in training, reported separately)."""
+    if form == "split":
+        c = mlp_size([LEG_OBS] + hidden, LEG_ACT)
+        n = N_LEGS
+        # Every control step each leg sends its message (foot contact and learned values) to its two neighbours.
+        msgs = {"message_values_sent_per_controller": 2 * MSG_SIZE,
+                "message_values_sent_robot": N_LEGS * 2 * MSG_SIZE}
+    else:
+        c = mlp_size([obs_dim] + hidden, act_dim)
+        n = 1
+        msgs = {"message_values_sent_per_controller": 0, "message_values_sent_robot": 0}
+    # For the robot, every controller holds its own copy of the (shared) weights.
+    return {"controllers": n, "per_controller": c,
+            "robot": {"params": n * c["params"], "macs": n * c["macs"], "distinct_params": c["params"]},
+            **msgs, "critic_training_only": mlp_size([critic_dim] + critic_hidden, 1)}
 
 
 def param_digest(model) -> str:
@@ -103,18 +173,34 @@ def main(argv=None):
     ap.add_argument("--steps-per-env", type=int, default=PPO["steps_per_env"])
     ap.add_argument("--threads", type=int, default=os.cpu_count(), help="torch threads for the update")
     ap.add_argument("--quiet", action="store_true")
+    ap.add_argument("--form", choices=("central", "split"), default="central")
+    ap.add_argument("--hidden", default=None,
+                    help="widths of the actor's hidden layers, e.g. 64,64 (default: 256,128,64 central, 64,64 split)")
+    ap.add_argument("--foot-contact", action="store_true",
+                    help="central form: add foot contact to the observation (the split form always has it)")
+    ap.add_argument("--msg-loss", type=float, default=0.0, help="split form: probability that a message is lost")
+    ap.add_argument("--msg-delay", type=int, default=0, help="split form: extra message delay in control steps")
+    ap.add_argument("--msg-jitter", type=int, default=0,
+                    help="split form: a uniform integer in 0..this many control steps added to the delay")
     args = ap.parse_args(argv)
-    hp = dict(PPO, num_envs=args.num_envs, num_workers=args.workers, steps_per_env=args.steps_per_env)
+    if args.hidden is None:
+        hidden = list(PPO["hidden"] if args.form == "central" else PPO["split_hidden"])
+    else:
+        hidden = [int(x) for x in args.hidden.split(",") if x]
+    hp = dict(PPO, num_envs=args.num_envs, num_workers=args.workers, steps_per_env=args.steps_per_env,
+              form=args.form, hidden=hidden)
+    del hp["split_hidden"]
+    env_cfg = dict(CONFIG, form=args.form, obs_foot_contact=args.foot_contact, msg_loss=args.msg_loss,
+                   msg_delay=args.msg_delay, msg_jitter=args.msg_jitter)
     os.makedirs(args.out, exist_ok=True)
 
     torch.manual_seed(args.seed)
     torch.use_deterministic_algorithms(True)
     gen = torch.Generator().manual_seed(args.seed)
-    venv = VecEnv(args.robot, hp["num_envs"], hp["num_workers"], args.seed)
+    venv = VecEnv(args.robot, hp["num_envs"], hp["num_workers"], args.seed, env_cfg)
     N, T = hp["num_envs"], hp["steps_per_env"]
-    first_obs = venv.obs()
-    obs_dim, act_dim = first_obs.shape[1], (first_obs.shape[1] - 9) // 3
-    ac = ActorCritic(obs_dim, act_dim, hp["hidden"], hp["init_noise_std"])
+    obs_dim, act_dim, critic_dim = venv.dims()
+    ac = make_model(args.form, obs_dim, act_dim, critic_dim, hidden, hp["critic_hidden"], hp["init_noise_std"])
     opt = torch.optim.Adam(ac.parameters(), lr=hp["lr"])
     lr = hp["lr"]
     update, env_steps, wall_prev, cpu_prev = 0, 0, 0.0, 0.0
@@ -123,6 +209,9 @@ def main(argv=None):
         s = torch.load(ckpt, weights_only=False)
         if s["robot"] != args.robot or s["seed"] != args.seed:
             raise SystemExit(f"{ckpt} is for robot {s['robot']}, seed {s['seed']}")
+        same = ("form", "hidden", "critic_hidden", "num_envs", "steps_per_env")  # the number of workers may change
+        if any(s["hp"].get(k) != hp[k] for k in same) or s["env_config"] != env_cfg:
+            raise SystemExit(f"{ckpt} was made with other settings; give the same options as the first run")
         ac.load_state_dict(s["model"])
         opt.load_state_dict(s["opt"])
         gen.set_state(s["gen"])
@@ -133,10 +222,13 @@ def main(argv=None):
             print(f"resumed at update {update}, {env_steps} env steps", flush=True)
     else:
         with open(os.path.join(args.out, "config.json"), "w") as f:
-            json.dump({"robot": args.robot, "seed": args.seed, "env": CONFIG, "reward_weights": REWARD_WEIGHTS,
-                       "ppo": hp, "obs_dim": obs_dim, "act_dim": act_dim, "torch": torch.__version__,
-                       "threads": args.threads, "commit": git_commit(), "machine": machine.describe()},
-                      f, indent=1)
+            json.dump({"robot": args.robot, "seed": args.seed, "form": args.form, "env": env_cfg,
+                       "reward_weights": REWARD_WEIGHTS, "ppo": hp, "obs_dim": obs_dim, "act_dim": act_dim,
+                       "critic_obs_dim": critic_dim,
+                       "computation": computation(args.form, obs_dim, act_dim, critic_dim, hidden,
+                                                  hp["critic_hidden"]),
+                       "torch": torch.__version__, "threads": args.threads, "commit": git_commit(),
+                       "machine": machine.describe()}, f, indent=1)
     obs = torch.from_numpy(venv.obs())
 
     t0, c0 = time.perf_counter(), time.process_time()
@@ -156,7 +248,7 @@ def main(argv=None):
                     "update": update, "env_steps": env_steps, "envs": venv.get_state(),
                     "wall_s": wall_prev + time.perf_counter() - t0,
                     "cpu_s": cpu_prev + (time.process_time() - c0) + (venv.stats()[1] - cpu_workers0),
-                    "hp": hp, "env_config": CONFIG, "reward_weights": REWARD_WEIGHTS}, path + ".tmp")
+                    "hp": hp, "env_config": env_cfg, "reward_weights": REWARD_WEIGHTS}, path + ".tmp")
         os.replace(path + ".tmp", path)
 
     while True:
@@ -267,6 +359,10 @@ def main(argv=None):
             "lr": lr, "std": round(float(ac.log_std.detach().exp().mean()), 4),
             **{k: round(v / n_mb, 6) for k, v in stats.items()},
         }
+        if args.form == "split":  # the joint targets' and the learned message values' noise, separately
+            leg_std = ac.log_std.detach().exp()
+            rec["std_joints"] = round(float(leg_std[:LEG_JOINTS].mean()), 4)
+            rec["std_messages"] = round(float(leg_std[LEG_JOINTS:].mean()), 4)
         sums, cpu_w = venv.stats()
         rec["cpu_s"] = round(cpu_prev + (time.process_time() - c0) + (cpu_w - cpu_workers0), 1)
         rec["reward_terms_per_step"] = {k: round(v / B, 6) for k, v in sums.items()}

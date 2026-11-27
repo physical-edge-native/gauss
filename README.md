@@ -4,7 +4,7 @@ Split control versus central control of robots, compared as a question of model
 architecture, in simulation, on robots of different sizes and kinds. Part of the
 [Physical-Edge Native Architecture](https://physical-edge-native.github.io/) project.
 
-**Status: just started. Scope revised to five robots (2026-11-27); a central policy learns to walk on A2 in a short run on CPUs; no split control yet.**
+**Status: just started. Scope revised to five robots (2026-11-27); a central policy learns to walk on A2 in a short run on CPUs; the split form (per-leg controllers with messages) is in the training code, with no results yet.**
 
 ## What this repository is for
 
@@ -59,7 +59,20 @@ python -m gauss.train --out runs/a2-s0 --seed 0 --workers 4 --minutes 75   # --r
 python -m gauss.evaluate runs/a2-s0/last.pt --out eval.json                 # tracking error, falls per minute
 ```
 
-`runs/<name>/config.json` records the settings, versions, commit and machine of a run, and
+`--form split` trains the neighbours-only split form instead: one controller per leg (the same
+weights for the four legs, with a leg identifier), each seeing its own leg's sensors, the body's
+IMU, the command and the messages from its two neighbouring legs, with the same critic as the
+central form. `--hidden 64,64` sets the widths of the actor's hidden layers; `--msg-loss`,
+`--msg-delay` and `--msg-jitter` add seeded message loss and delay; `--foot-contact` gives the
+central policy the foot contacts too, so that both forms see the same sensors.
+
+```bash
+python -m gauss.train --out runs/a2-split-s0 --form split --hidden 64,64 --seed 0 --workers 4 --minutes 75
+python -m gauss.evaluate runs/a2-split-s0/last.pt   # messages passed every step, with no loss
+```
+
+`runs/<name>/config.json` records the settings, versions, commit and machine of a run, the
+parameters and multiply-adds per controller and for the whole robot, and
 `log.jsonl` one line per update (env steps, wall time, CPU time, losses, reward terms).
 The same seed gives identical results with the same `--threads`, torch version and kind of CPU.
 

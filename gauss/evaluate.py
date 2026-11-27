@@ -6,6 +6,8 @@ For each command the robot starts from standing and runs for ``--seconds``. Afte
 restarts from standing with the same command, and the fall is counted. Reported per command and overall:
 velocity-tracking error (linear, in the body's horizontal plane, and yaw rate) after the first second
 of each episode, falls per minute, distance travelled, touchdowns per foot and the final base height.
+Works for both forms; a split checkpoint is run with its messages passed every control step with no loss and no
+extra delay.
 """
 from __future__ import annotations
 
@@ -17,7 +19,7 @@ import torch
 
 from . import machine
 from .env import WalkEnv
-from .train import ActorCritic
+from .train import make_model
 
 # (vx m/s, vy m/s, yaw rate rad/s)
 COMMANDS = [(0.0, 0.0, 0.0), (0.3, 0.0, 0.0), (0.5, 0.0, 0.0), (0.8, 0.0, 0.0), (1.0, 0.0, 0.0),
@@ -29,8 +31,13 @@ def evaluate(path: str, seconds: float = 10.0, seed: int = 123, robot: str | Non
     s = torch.load(path, weights_only=False)
     robot = robot or s["robot"]
     torch.set_num_threads(1)
-    env = WalkEnv(robot, seed, 0, config={"episode_s": seconds + 1.0, "command_resample_s": 1e9})
-    ac = ActorCritic(env.obs_dim, env.act_dim, s["hp"]["hidden"], 1.0)
+    hp, ec = s["hp"], s.get("env_config", {})
+    form = hp.get("form", "central")
+    config = {"episode_s": seconds + 1.0, "command_resample_s": 1e9, "form": form,
+              "obs_foot_contact": ec.get("obs_foot_contact", False), "msg_loss": 0.0, "msg_delay": 0, "msg_jitter": 0}
+    env = WalkEnv(robot, seed, 0, config=config)
+    ac = make_model(form, env.obs_dim, env.act_dim, env.critic_dim, hp["hidden"],
+                    hp.get("critic_hidden", hp["hidden"]), 1.0)
     ac.load_state_dict(s["model"])
     settle = int(round(SETTLE_S / env.dt))
     rows = []
@@ -47,7 +54,7 @@ def evaluate(path: str, seconds: float = 10.0, seed: int = 123, robot: str | Non
         last = env.last_foot.copy()
         for _ in range(n):
             with torch.no_grad():
-                a = ac.actor(torch.from_numpy(obs).float().unsqueeze(0))[0].numpy()
+                a = ac.mean(torch.from_numpy(obs).float().unsqueeze(0))[0].numpy()
             pos_before = env.d.qpos[0:2].copy()
             obs, _, done, info = env.step(a)
             if done:
@@ -82,7 +89,7 @@ def evaluate(path: str, seconds: float = 10.0, seed: int = 123, robot: str | Non
     lin_all = [r["lin_vel_err"] for r in rows if r["lin_vel_err"] is not None]
     yaw_all = [r["yaw_rate_err"] for r in rows if r["yaw_rate_err"] is not None]
     return {
-        "checkpoint": path, "robot": robot, "seed": seed, "update": s["update"], "env_steps": s["env_steps"],
+        "checkpoint": path, "robot": robot, "form": form, "seed": seed, "update": s["update"], "env_steps": s["env_steps"],
         "seconds_per_command": seconds,
         "lin_vel_err": round(float(np.mean(lin_all)), 4) if lin_all else None,
         "yaw_rate_err": round(float(np.mean(yaw_all)), 4) if yaw_all else None,
@@ -101,7 +108,7 @@ def main(argv=None):
     ap.add_argument("--out", help="write the result as JSON here")
     args = ap.parse_args(argv)
     res = evaluate(args.checkpoint, args.seconds, args.seed, args.robot)
-    print(f"{res['robot']}, update {res['update']}, {res['env_steps']} env steps: "
+    print(f"{res['robot']}, {res['form']} form, update {res['update']}, {res['env_steps']} env steps: "
           f"linear error {res['lin_vel_err']} m/s, yaw-rate error {res['yaw_rate_err']} rad/s, "
           f"falls per minute {res['falls_per_minute']}")
     for r in res["commands"]:
