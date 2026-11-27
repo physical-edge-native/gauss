@@ -35,6 +35,8 @@ def _worker(conn, robot, seed, env_ids, config, weights):
                 for key in INFO_KEYS:
                     info[key][j] = inf[key]
             conn.send((obs, rew, done, info))
+        elif cmd == "dims":
+            conn.send((envs[0].obs_dim, envs[0].act_dim, envs[0].critic_dim))
         elif cmd == "obs":
             conn.send(np.stack([e._obs() for e in envs]).astype(np.float32))
         elif cmd == "stats":  # reward term sums since last call, and this process's CPU time
@@ -71,6 +73,10 @@ class VecEnv:
         for i, c in enumerate(self.conns):
             c.send((cmd, None if args is None else args[i]))
         return [c.recv() for c in self.conns]
+
+    def dims(self):
+        """(observation size, action size, size of the whole-body observation at the start of the observation)."""
+        return self._all("dims")[0]
 
     def obs(self) -> np.ndarray:
         return np.concatenate(self._all("obs"))
