@@ -22,6 +22,27 @@ the wording follows erg.
 Robots: erg's size, Go2 size, A2 size (quadrupeds, 12 joints each), a robot arm (6–7 joints), a humanoid (19–29
 joints). Same model, sensors, command, reward, evaluation and training budget for both forms, at least 5 seeds each.
 
+## Training setup shared by both forms
+
+Added 2026-11-27 (#38) by an AI assistant. This section describes what `gauss/train.py` and `gauss/env.py` do on main
+and changes no expectation. Published comparisons of split and central control differ in these choices
+([prior work](../research/2026-11-27-prior-work-split-control.md)), so they are stated here.
+
+- **One algorithm and one critic.** Both forms are trained with the same PPO. The critic is one network on the
+  whole-body observation, the same in both forms, and is used only in training ("centralized training, decentralized
+  execution"). Only the actors would run on the robot.
+- **Split form: one actor shared by the four legs.** Each leg applies the same actor network to its own observation,
+  which includes a one-hot leg identifier. The robot's log probability is the sum of the four legs', so PPO's ratio,
+  entropy and KL are the robot's, as in the central form and as in erg.
+- **Messages.** Each leg sends its foot contact and its learned values (clipped) to its two neighbours: the other leg at
+  the same end of the body and the other leg on the same side. A message arrives one control step later than the
+  receiver's own sensors, plus any extra delay. Loss and delay are drawn from a seed per environment.
+- **What M1 counts.** Every controller holds its own copy of the shared actor, so the whole robot's parameters and
+  multiply-adds are four times one controller's. The critic and the action standard deviations are reported
+  separately as used in training only.
+- **Other robots.** On the arm and the humanoid the parts differ (joints along a chain; legs, arms and torso), so
+  whether controllers share weights is decided in the issue of each stage, before training.
+
 ## Rules already decided
 
 - **Shown**: the difference of the means over seeds is larger than twice its standard error and has the expected
