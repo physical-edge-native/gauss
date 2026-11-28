@@ -40,12 +40,12 @@ Work is tracked in GitHub Issues.
 ## Running
 
 Python 3.10 or later and git are needed. The robot models are not stored in this repository;
-they are fetched from their upstream repositories at pinned commits, with their BSD-3-Clause
-licenses, and checked against the hashes in `gauss/models.lock.json`.
+they are fetched from their upstream repositories at pinned commits, with their licenses (BSD-3-Clause
+for A2 and Go2, MIT OR Apache-2.0 for erg's robot), and checked against the hashes in `gauss/models.lock.json`.
 
 ```bash
 python -m pip install -e ".[test]"
-python -m gauss.models fetch      # A2 from unitreerobotics/unitree_mujoco, Go2 from MuJoCo Menagerie
+python -m gauss.models fetch      # erg's robot from erg, A2 from unitreerobotics/unitree_mujoco, Go2 from MuJoCo Menagerie
 python -m pytest                  # loading, standing for 10 s, determinism
 python -m gauss.throughput --out throughput.json   # control steps per second on this machine
 ```

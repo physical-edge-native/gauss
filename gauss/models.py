@@ -1,8 +1,8 @@
 """Fetch the robot models at pinned commits and check them against recorded hashes.
 
 The model files are not committed to gauss. They are fetched from their upstream repositories at
-the commits below, keeping their BSD-3-Clause license files, and every file is checked against
-the SHA-256 hashes in ``models.lock.json``.
+the commits below, keeping their license files (BSD-3-Clause for A2 and Go2; MIT OR Apache-2.0 for
+erg's robot), and every file is checked against the SHA-256 hashes in ``models.lock.json``.
 
     python -m gauss.models fetch    # fetch missing models and verify them
     python -m gauss.models verify   # verify only
@@ -47,6 +47,15 @@ _GO2_ASSETS = tuple(
 )
 
 SOURCES = {
+    # erg's robot (body layout L1), at the merge of erg#67; pena-meta decisions/2026-11-28-gauss-uses-ergs-model.md.
+    # Moving this commit is its own issue and pull request (pena-meta contracts.md).
+    "erg": Source(
+        robot="erg",
+        repository="https://github.com/physical-edge-native/erg",
+        commit="7c2f070c554eb8df5da7c2c8f750ce30692f81b0",
+        files=("LICENSE-MIT", "LICENSE-APACHE", "models/quadruped.xml"),
+        xml="models/quadruped.xml",
+    ),
     "a2": Source(
         robot="a2",
         repository="https://github.com/unitreerobotics/unitree_mujoco",

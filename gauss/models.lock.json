@@ -1,4 +1,13 @@
 {
+  "erg": {
+    "repository": "https://github.com/physical-edge-native/erg",
+    "commit": "7c2f070c554eb8df5da7c2c8f750ce30692f81b0",
+    "sha256": {
+      "LICENSE-MIT": "0f2d1b5cedcd9dcbb513b0c3557ae7050b7e400c9547a4983313f1bef7936f87",
+      "LICENSE-APACHE": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "models/quadruped.xml": "d7554dcad2129ae6fc24406b9b766410cf6adacacc32f918f93af0722f529c8a"
+    }
+  },
   "a2": {
     "repository": "https://github.com/unitreerobotics/unitree_mujoco",
     "commit": "1eb6642e3f3fdfb7fb13a9794fd6a2dd93ea0e7d",

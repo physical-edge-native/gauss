@@ -9,3 +9,8 @@ def test_fetched_models_match_the_lock():
 def test_license_files_are_kept():
     assert "BSD" in (models.robot_dir("a2") / "LICENSE").read_text(encoding="utf-8")
     assert "Redistribution" in (models.robot_dir("go2") / "unitree_go2" / "LICENSE").read_text(encoding="utf-8")
+
+
+def test_erg_license_files_are_kept():
+    assert "MIT License" in (models.robot_dir("erg") / "LICENSE-MIT").read_text(encoding="utf-8")
+    assert "Apache License" in (models.robot_dir("erg") / "LICENSE-APACHE").read_text(encoding="utf-8")
